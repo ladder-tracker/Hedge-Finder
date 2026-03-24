@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cashout + Hedge Finder</title>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  body {
+    background: linear-gradient(180deg,#0b1220,#0f172a);
+  }
+  .card {
+    background: rgba(15,23,42,0.75);
+    border: 1px solid rgba(148,163,184,0.15);
+    backdrop-filter: blur(10px);
+  }
+</style>
+</head>
+
+<body class="text-white min-h-screen flex items-center justify-center p-4">
+
+<div class="w-full max-w-md space-y-4">
+
+  <!-- INPUT -->
+  <div class="card rounded-2xl p-4 space-y-3">
+    <h1 class="text-xl font-bold">Cashout + Hedge Finder</h1>
+
+    <input id="stake" type="number" placeholder="Original Stake ($)"
+      class="w-full h-12 rounded-xl bg-slate-900 px-4">
+
+    <input id="payout" type="number" placeholder="Potential Payout ($)"
+      class="w-full h-12 rounded-xl bg-slate-900 px-4">
+  </div>
+
+  <!-- RESULT -->
+  <div id="resultCard" class="card rounded-2xl p-4 hidden space-y-4">
+
+    <!-- MAIN -->
+    <div>
+      <div id="mainLine" class="text-lg font-bold"></div>
+      <div id="cashoutLine" class="text-emerald-300 font-semibold mt-1"></div>
+    </div>
+
+    <!-- SCENARIOS -->
+    <div class="grid grid-cols-3 gap-2 text-sm">
+
+      <div id="s1" class="p-3 rounded-xl bg-white/5 text-center"></div>
+      <div id="s2" class="p-3 rounded-xl bg-white/10 text-center border border-sky-400"></div>
+      <div id="s3" class="p-3 rounded-xl bg-white/5 text-center"></div>
+
+    </div>
+
+    <!-- TIP -->
+    <a href="https://buy.stripe.com/5kQ9AV1Jr9G79tNbLdeME00"
+       target="_blank"
+       class="block text-center text-xs text-amber-300 mt-2">
+       Support the tool
+    </a>
+
+  </div>
+
+</div>
+
+<script>
+
+function toDecimal(odds){
+  return odds > 0 ? 1 + odds/100 : 1 + 100/Math.abs(odds);
+}
+
+function calcScenario(S, P, odds){
+
+  const d = toDecimal(odds);
+
+  const hedge = P / d;
+
+  const win = P - hedge - S;
+  const hedgeWin = hedge * (d - 1) - S;
+
+  const locked = Math.min(win, hedgeWin);
+
+  const cashout = S + locked;
+
+  return {
+    hedge,
+    locked,
+    cashout
+  };
+}
+
+function format(n){
+  return "$" + n.toFixed(2);
+}
+
+function update(){
+
+  const S = parseFloat(document.getElementById('stake').value);
+  const P = parseFloat(document.getElementById('payout').value);
+
+  if(!S || !P || P <= S){
+    document.getElementById('resultCard').classList.add('hidden');
+    return;
+  }
+
+  const scenarios = [
+    {odds: -200, el: "s1"},
+    {odds: -110, el: "s2"},
+    {odds: +100, el: "s3"}
+  ];
+
+  const results = scenarios.map(s => ({
+    ...s,
+    ...calcScenario(S,P,s.odds)
+  }));
+
+  // MAIN = -110
+  const main = results[1];
+
+  document.getElementById('mainLine').innerText =
+    `Hedge ${format(main.hedge)} → lock ${format(main.locked)}`;
+
+  document.getElementById('cashoutLine').innerText =
+    `Don’t cash out below ${format(main.cashout)}`;
+
+  // SCENARIOS
+  results.forEach(r => {
+    document.getElementById(r.el).innerHTML = `
+      <div class="font-semibold">${r.odds}</div>
+      <div class="text-xs mt-1">${format(r.hedge)}</div>
+      <div class="text-emerald-300 text-xs">${format(r.locked)}</div>
+    `;
+  });
+
+  document.getElementById('resultCard').classList.remove('hidden');
+}
+
+document.getElementById('stake').addEventListener('input', update);
+document.getElementById('payout').addEventListener('input', update);
+
+</script>
+
+</body>
+</html>
